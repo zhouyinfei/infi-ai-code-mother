@@ -50,3 +50,10 @@ knife4j:
 #      max-tokens: 8192
 #      strict-json-schema: true
 #      response-format: json_object
+#    streaming-chat-model:
+#      base-url: xxx
+#      api-key: xxx
+#      model-name: qwen3.8-2.4t-a95b
+#      max-tokens: 8192
+#      log-requests: true
+#      log-responses: true
