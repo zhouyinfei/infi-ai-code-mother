@@ -8,7 +8,7 @@ import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import org.infi.infiaicodemother.exception.BusinessException;
 import org.infi.infiaicodemother.exception.ErrorCode;
-import org.infi.infiaicodemother.model.dto.UserQueryRequest;
+import org.infi.infiaicodemother.model.dto.user.UserQueryRequest;
 import org.infi.infiaicodemother.model.entity.User;
 import org.infi.infiaicodemother.mapper.UserMapper;
 import org.infi.infiaicodemother.model.enums.UserRoleEnum;

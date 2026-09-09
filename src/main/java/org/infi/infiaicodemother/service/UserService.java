@@ -3,7 +3,7 @@ package org.infi.infiaicodemother.service;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.infi.infiaicodemother.model.dto.UserQueryRequest;
+import org.infi.infiaicodemother.model.dto.user.UserQueryRequest;
 import org.infi.infiaicodemother.model.entity.User;
 import org.infi.infiaicodemother.model.vo.LoginUserVO;
 import org.infi.infiaicodemother.model.vo.UserVO;

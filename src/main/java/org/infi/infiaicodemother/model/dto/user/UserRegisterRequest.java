@@ -1,4 +1,4 @@
-package org.infi.infiaicodemother.model.dto;
+package org.infi.infiaicodemother.model.dto.user;
 
 import lombok.Data;
 
