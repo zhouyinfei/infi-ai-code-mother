@@ -93,6 +93,8 @@ const myParams = reactive<API.AppQueryRequest>({
   pageNum: 1,
   pageSize: PAGE_SIZE,
   appName: '',
+  sortField: 'createTime',
+  sortOrder: 'descend',
 })
 
 const fetchMyApps = async () => {
@@ -131,6 +133,8 @@ const goodParams = reactive<API.AppQueryRequest>({
   pageNum: 1,
   pageSize: PAGE_SIZE,
   appName: '',
+  sortField: 'createTime',
+  sortOrder: 'descend',
 })
 
 const fetchGoodApps = async () => {
