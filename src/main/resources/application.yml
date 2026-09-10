@@ -2,6 +2,10 @@ spring:
   application:
     name: infi-ai-code-mother-backend
     # mysql
+  session:
+    store-type: redis
+    # session 30 天过期
+    timeout: 2592000
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/infi_ai_code_mother
@@ -21,6 +25,9 @@ server:
   port: 8123
   servlet:
     context-path: /api
+    session:
+      cookie:
+        max-age: 2592000
 #springdoc-openapi 项目配置
 springdoc:
   swagger-ui:
