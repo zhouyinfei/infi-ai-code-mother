@@ -16,6 +16,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons-vue'
 import { getAppVoById, deployApp, deleteApp } from '@/api/appController'
+import { listAppChatHistory } from '@/api/chatHistoryController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import GlobalHeader from '@/layouts/components/GlobalHeader.vue'
 import logo from '@/assets/logo.png'
@@ -35,6 +36,7 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   streaming?: boolean
+  _createTime?: string
 }
 
 const app = ref<API.AppVO | null>(null)
@@ -43,6 +45,13 @@ const input = ref('')
 const streaming = ref(false)
 const loading = ref(false)
 const deploying = ref(false)
+
+// 对话历史
+const historyLoaded = ref(false)
+const hasMoreHistory = ref(false)
+const loadingHistory = ref(false)
+const totalChatCount = ref(0)
+const chatHistoryLoadFailed = ref(false)
 
 // 应用详情抽屉
 const detailVisible = ref(false)
@@ -54,8 +63,9 @@ const messagesRef = ref<HTMLElement | null>(null)
 let eventSource: EventSource | null = null
 
 // 是否为应用创建者（仅创建者可以对话和部署）
+// 使用 String() 转换后比较，避免类型不匹配（后端可能返回字符串或数字）
 const isOwner = computed(
-  () => !!app.value?.userId && app.value.userId === loginUserStore.loginUser.id,
+  () => !!app.value?.userId && String(app.value.userId) === String(loginUserStore.loginUser.id),
 )
 
 // 部署地址：根据 deployKey 推导（与后端部署规则一致），部署成功后刷新应用信息即可更新
@@ -71,11 +81,14 @@ const formatTime = (time?: string) => {
   return date.toLocaleString('zh-CN', { hour12: false })
 }
 
-// 本地预览地址：http://localhost:8123/api/static/{codeGenType}_{appId}/
+// 本地预览地址：优先使用代码输出目录（生成后一定有文件），部署目录可能已失效
+// 格式：http://localhost:8123/api/static/{codeGenType}_{appId}/
 // 附带 previewKey 作为版本号，生成完成后强制加载最新文件
 const previewUrl = computed(() => {
-  if (!app.value?.codeGenType) return ''
-  return `${API_BASE_URL}/static/${app.value.codeGenType}_${appId}/?t=${previewKey.value}`
+  if (!app.value) return ''
+  const dirName = (app.value.codeGenType && appId) ? `${app.value.codeGenType}_${appId}` : ''
+  if (!dirName) return ''
+  return `${API_BASE_URL}/static/${dirName}/?t=${previewKey.value}`
 })
 
 // 消息区域滚动到底部
@@ -105,10 +118,85 @@ const fetchApp = async () => {
   }
 }
 
+// 加载对话历史（游标分页，首次加载最近 10 条）
+const fetchChatHistory = async () => {
+  try {
+    const res = await listAppChatHistory({ appId, pageSize: 10 })
+    if (res.data.code === 0 && res.data.data) {
+      const records = res.data.data.records ?? []
+      totalChatCount.value = res.data.data.totalRow ?? 0
+      // 按创建时间升序展示
+      messages.value = records
+        .sort(
+          (a, b) => new Date(a.createTime ?? '').getTime() - new Date(b.createTime ?? '').getTime(),
+        )
+        .map((r) => ({
+          role: (r.messageType === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+          content: r.message ?? '',
+          _createTime: r.createTime,
+        }))
+      hasMoreHistory.value = records.length >= 10
+    } else {
+      chatHistoryLoadFailed.value = true
+    }
+  } catch (error) {
+    chatHistoryLoadFailed.value = true
+  } finally {
+    historyLoaded.value = true
+  }
+}
+
+// 加载更多历史消息（向前翻页）
+const loadMoreHistory = async () => {
+  if (loadingHistory.value || !hasMoreHistory.value || messages.value.length === 0) return
+  loadingHistory.value = true
+  const el = messagesRef.value
+  const oldScrollHeight = el?.scrollHeight ?? 0
+
+  try {
+    const lastCreateTime = messages.value[0]._createTime
+    if (!lastCreateTime) return
+
+    const res = await listAppChatHistory({
+      appId,
+      pageSize: 10,
+      lastCreateTime,
+    })
+    if (res.data.code === 0 && res.data.data) {
+      const records = res.data.data.records ?? []
+      const olderMessages = records
+        .sort(
+          (a, b) => new Date(a.createTime ?? '').getTime() - new Date(b.createTime ?? '').getTime(),
+        )
+        .map((r) => ({
+          role: (r.messageType === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+          content: r.message ?? '',
+          _createTime: r.createTime,
+        }))
+      // 将旧消息插入到列表头部
+      messages.value = [...olderMessages, ...messages.value]
+      hasMoreHistory.value = records.length >= 10
+      // 保持滚动位置不跳动
+      nextTick(() => {
+        if (el) {
+          el.scrollTop = el.scrollHeight - oldScrollHeight
+        }
+      })
+    }
+  } catch (error) {
+    message.error('加载更多消息失败')
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
 // 检查生成的网站文件是否可访问
 const checkPreview = async () => {
+  console.log('[checkPreview] previewUrl:', previewUrl.value)
+  console.log('[checkPreview] app.value:', app.value)
   if (!previewUrl.value) {
     previewReady.value = false
+    console.log('[checkPreview] previewUrl is empty, skip')
     return
   }
   try {
@@ -117,20 +205,32 @@ const checkPreview = async () => {
       credentials: 'include',
       cache: 'no-store',
     })
+    console.log('[checkPreview] response status:', res.status, 'ok:', res.ok)
     previewReady.value = res.ok
   } catch (error) {
+    console.error('[checkPreview] fetch error:', error)
     previewReady.value = false
   }
 }
 
 // 发送消息（SSE 流式接收 AI 回复）
 const sendMessage = (text: string) => {
+  console.log('sendMessage called with text:', text)
   const content = text.trim()
-  if (!content || streaming.value || !appId) return
+  console.log('content:', content)
+  console.log('streaming.value:', streaming.value)
+  console.log('appId:', appId)
+  if (!content || streaming.value || !appId) {
+    console.log('Early return: !content || streaming || !appId')
+    return
+  }
+  console.log('isOwner.value:', isOwner.value)
   if (!isOwner.value) {
+    console.log('Not owner, showing warning')
     message.warning('仅应用创建者可以继续对话')
     return
   }
+  console.log('Proceeding to send message and create SSE connection')
   // 追加用户消息和空的 AI 消息
   messages.value.push({ role: 'user', content })
   const aiMessage = reactive<ChatMessage>({
@@ -147,12 +247,16 @@ const sendMessage = (text: string) => {
   const url = `${API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(content)}`
   eventSource = new EventSource(url, { withCredentials: true })
 
-  // 接收流式内容，后端返回的数据格式为 {"d": "内容片段"}
+  // 接收流式内容，后端返回的数据格式为 {"d": "内容片段"} 或 {"error": "错误信息"}
   eventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
       if (data?.d) {
         aiMessage.content += data.d
+        scrollToBottom()
+      } else if (data?.error) {
+        // 处理错误事件
+        aiMessage.content += '\n（' + data.error + '）'
         scrollToBottom()
       }
     } catch (error) {
@@ -161,7 +265,8 @@ const sendMessage = (text: string) => {
   }
 
   // 流结束（后端发送 done 事件）
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    console.log('[handleFinish] called, aiMessage.content length:', aiMessage.content.length)
     eventSource?.close()
     eventSource = null
     aiMessage.streaming = false
@@ -171,8 +276,11 @@ const sendMessage = (text: string) => {
     streaming.value = false
     // 生成完成后刷新应用信息并展示网站效果
     previewKey.value += 1
-    checkPreview()
-    fetchApp()
+    console.log('[handleFinish] previewKey:', previewKey.value)
+    await fetchApp()
+    console.log('[handleFinish] after fetchApp, app.value:', app.value)
+    await checkPreview()
+    console.log('[handleFinish] after checkPreview, previewReady:', previewReady.value)
   }
 
   eventSource.addEventListener('done', handleFinish)
@@ -184,6 +292,12 @@ const sendMessage = (text: string) => {
 
 // 点击发送按钮
 const handleSend = () => {
+  console.log('handleSend called, input:', input.value)
+  console.log('isOwner:', isOwner.value)
+  console.log('appId:', appId)
+  console.log('streaming:', streaming.value)
+  console.log('loginUser.id:', loginUserStore.loginUser.id)
+  console.log('app.userId:', app.value?.userId)
   sendMessage(input.value)
 }
 
@@ -210,7 +324,7 @@ const handleDeploy = async () => {
   }
   deploying.value = true
   try {
-    const res = await deployApp({ appId: appId as unknown as number })
+    const res = await deployApp({ appId })
     if (res.data.code === 0 && res.data.data) {
       message.success('部署成功')
       // 打开部署后的网站
@@ -268,12 +382,16 @@ const handleMenuClick = ({ key }: { key: string }) => {
 }
 
 onMounted(async () => {
+  // 确保登录用户信息已加载，避免 isOwner 计算错误
+  if (!loginUserStore.loginUser.id) {
+    await loginUserStore.fetchLoginUser().catch(() => {})
+  }
   await fetchApp()
+  await fetchChatHistory()
   await checkPreview()
-  // 从主页跳转过来时，自动将初始提示词作为消息发送给 AI
-  const initPrompt = route.query.initPrompt as string
-  if (initPrompt) {
-    sendMessage(initPrompt)
+  // 如果是自己的应用、对话历史加载成功且没有对话历史，自动发送初始提示词
+  if (isOwner.value && !chatHistoryLoadFailed.value && Number(totalChatCount.value) === 0 && app.value?.initPrompt) {
+    sendMessage(app.value.initPrompt)
   }
 })
 
@@ -293,9 +411,14 @@ onBeforeUnmount(() => {
       <!-- 左侧对话区域 -->
       <div class="chat-panel">
         <div ref="messagesRef" class="messages-area">
-          <a-spin v-if="loading && messages.length === 0" class="messages-loading" />
+          <div v-if="hasMoreHistory" class="load-more-area">
+            <a-button size="small" :loading="loadingHistory" @click="loadMoreHistory">
+              {{ loadingHistory ? '加载中...' : '加载更多' }}
+            </a-button>
+          </div>
+          <a-spin v-if="loading && !historyLoaded && messages.length === 0" class="messages-loading" />
           <a-empty
-            v-else-if="messages.length === 0"
+            v-else-if="messages.length === 0 && historyLoaded"
             description="输入消息，和 AI 对话生成网站应用"
             class="messages-empty"
           />
@@ -399,20 +522,26 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="preview-body">
-          <div v-if="!previewReady" class="preview-placeholder">
+          <div v-if="previewReady" class="preview-iframe-wrapper">
+            <iframe
+              :key="previewKey"
+              :src="previewUrl"
+              class="preview-iframe"
+              title="网站效果预览"
+            />
+          </div>
+          <div v-else-if="totalChatCount >= 2" class="preview-placeholder">
+            <a-spin />
+            <p class="placeholder-title">网站效果加载中</p>
+            <p class="placeholder-desc">正在检查生成的网站文件...</p>
+          </div>
+          <div v-else class="preview-placeholder">
             <img :src="logo" class="placeholder-logo" alt="logo" />
             <p class="placeholder-title">网站效果预览</p>
             <p class="placeholder-desc">
               {{ streaming ? 'AI 正在生成网站，请稍候...' : '网站文件生成完成后，将在这里展示效果' }}
             </p>
           </div>
-          <iframe
-            v-else
-            :key="previewKey"
-            :src="previewUrl"
-            class="preview-iframe"
-            title="网站效果预览"
-          />
         </div>
       </div>
     </div>
@@ -493,6 +622,11 @@ onBeforeUnmount(() => {
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+.load-more-area {
+  text-align: center;
+  padding: 8px 0 12px;
 }
 
 .msg-row {
@@ -673,6 +807,11 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   position: relative;
+}
+
+.preview-iframe-wrapper {
+  width: 100%;
+  height: 100%;
 }
 
 .preview-iframe {

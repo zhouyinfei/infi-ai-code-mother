@@ -67,7 +67,7 @@ public class AppController {
         User loginUser = userService.getLoginUser(request);
         // 调用服务生成代码（流式）
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
-        // 转换为 ServerSentEvent 格式
+        // 转换为 ServerSentEvent 格式，并处理错误
         return contentFlux
                 .map(chunk -> {
                     // 将内容包装成JSON对象
@@ -77,13 +77,26 @@ public class AppController {
                             .data(jsonData)
                             .build();
                 })
-                .concatWith( Mono.just(
+                .concatWith(Mono.just(
                         // 发送结束事件
                         ServerSentEvent.<String>builder()
                                 .event("done")
                                 .data("")
                                 .build()
-                ));
+                ))
+                .onErrorResume(error -> {
+                    // 发生错误时，发送错误事件并正常结束流
+                    Map<String, String> errorWrapper = Map.of("error", error.getMessage() != null ? error.getMessage() : "生成失败");
+                    String errorData = JSONUtil.toJsonStr(errorWrapper);
+                    ServerSentEvent<String> errorEvent = ServerSentEvent.<String>builder()
+                            .data(errorData)
+                            .build();
+                    ServerSentEvent<String> doneEvent = ServerSentEvent.<String>builder()
+                            .event("done")
+                            .data("")
+                            .build();
+                    return Flux.just(errorEvent, doneEvent);
+                });
     }
 
 
@@ -115,7 +128,7 @@ public class AppController {
      * @return 应用 id
      */
     @PostMapping("/add")
-    public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
+    public BaseResponse<String> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
         // 参数校验
         String initPrompt = appAddRequest.getInitPrompt();
@@ -133,7 +146,7 @@ public class AppController {
         // 插入数据库
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(app.getId());
+        return ResultUtils.success(String.valueOf(app.getId()));
     }
 
     /**

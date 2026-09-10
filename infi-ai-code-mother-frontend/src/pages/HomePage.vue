@@ -72,8 +72,7 @@ const handleCreate = async () => {
     if (res.data.code === 0 && res.data.data) {
       const appId = res.data.data
       message.success('应用创建成功，正在跳转...')
-      // 跳转到对话页，并自动发送初始提示词
-      router.push(`/app/chat/${appId}?initPrompt=${encodeURIComponent(prompt.value.trim())}`)
+      router.push(`/app/chat/${appId}`)
     } else {
       message.error('创建应用失败：' + (res.data.message ?? '未知错误'))
     }

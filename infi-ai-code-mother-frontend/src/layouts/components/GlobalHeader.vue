@@ -40,6 +40,7 @@ const props = withDefaults(
     menus: () => [
       { key: 'home', label: '首页', path: '/' },
       { key: '应用管理', label: '应用管理', path: '/admin/appManage' },
+      { key: '对话管理', label: '对话管理', path: '/admin/chatHistoryManage' },
       { key: '用户管理', label: '用户管理', path: '/admin/userManage' },
     ],
   },
