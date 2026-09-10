@@ -16,8 +16,8 @@ const props = withDefaults(
     title: '水豚应用生成',
     menus: () => [
       { key: 'home', label: '首页', path: '/' },
+      { key: '应用管理', label: '应用管理', path: '/admin/appManage' },
       { key: '用户管理', label: '用户管理', path: '/admin/userManage' },
-      { key: 'code', label: '代码生成', path: '/code' },
     ],
   },
 )

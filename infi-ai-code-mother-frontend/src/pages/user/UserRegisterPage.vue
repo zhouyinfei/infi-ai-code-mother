@@ -12,6 +12,19 @@ const formState = reactive({
   checkPassword: '',
 })
 
+// 校验两次输入的密码是否一致
+const validateCheckPassword = async (_rule: unknown, value: string) => {
+  if (value && value !== formState.userPassword) {
+    return Promise.reject(new Error('两次输入的密码不一致'))
+  }
+  return Promise.resolve()
+}
+
+const checkPasswordRules = [
+  { required: true, message: '请确认密码' },
+  { validator: validateCheckPassword },
+]
+
 const handleSubmit = async () => {
   try {
     const res = await userRegister({
@@ -56,20 +69,7 @@ const handleSubmit = async () => {
         >
           <a-input-password v-model:value="formState.userPassword" placeholder="请输入密码" size="large" />
         </a-form-item>
-        <a-form-item
-          name="checkPassword"
-          :rules="[
-            { required: true, message: '请确认密码' },
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                if (!value || getFieldValue('userPassword') === value) {
-                  return Promise.resolve()
-                }
-                return Promise.reject(new Error('两次输入的密码不一致'))
-              },
-            }),
-          ]"
-        >
+        <a-form-item name="checkPassword" :rules="checkPasswordRules">
           <a-input-password v-model:value="formState.checkPassword" placeholder="请再次输入密码" size="large" />
         </a-form-item>
         <div class="tips">

@@ -12,9 +12,11 @@ loginUserStore.fetchLoginUser().catch(() => {
   // 后端未启动或请求失败时静默处理
 })
 
-// 登录/注册页面使用独立布局，不包裹 BasicLayout
+// 登录/注册页面和应用对话页使用独立布局，不包裹 BasicLayout
 const standalonePages = ['/user/login', '/user/register']
-const isStandalone = computed(() => standalonePages.includes(route.path))
+const isStandalone = computed(
+  () => standalonePages.includes(route.path) || route.path.startsWith('/app/chat'),
+)
 </script>
 
 <template>
