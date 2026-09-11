@@ -160,7 +160,7 @@ infi-ai-code-mother/
 
 ### 主页
 ![主页](img/img_1.png)
-![主页应用列表](img/img_2.png)
+![img.png](img/img_2.png)
 
 ### 对话生成网页
 ![img.png](img/img_4.png)

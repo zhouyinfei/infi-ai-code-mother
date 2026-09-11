@@ -71,3 +71,11 @@ knife4j:
 #      max-tokens: 8192
 #      log-requests: true
 #      log-responses: true
+
+#cos:
+#  client:
+#    host: your-custom-domain.com
+#    secretId: your-secret-id
+#    secretKey: your-secret-key
+#    region: ap-shanghai
+#    bucket: your-bucket-name
