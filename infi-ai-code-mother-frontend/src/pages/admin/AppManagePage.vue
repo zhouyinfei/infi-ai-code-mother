@@ -15,6 +15,7 @@ const GOOD_APP_PRIORITY = 99
 const codeGenTypeOptions = [
   { label: '原生 HTML 模式', value: 'html' },
   { label: '原生多文件模式', value: 'multi_file' },
+  { label: 'Vue 项目', value: 'vue_project' },
 ]
 
 // 表格列定义

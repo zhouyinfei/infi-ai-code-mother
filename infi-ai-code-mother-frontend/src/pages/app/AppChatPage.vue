@@ -81,14 +81,18 @@ const formatTime = (time?: string) => {
   return date.toLocaleString('zh-CN', { hour12: false })
 }
 
-// 本地预览地址：优先使用代码输出目录（生成后一定有文件），部署目录可能已失效
+// 本地预览地址
 // 格式：http://localhost:8123/api/static/{codeGenType}_{appId}/
+// Vue 项目类型：http://localhost:8123/api/static/{codeGenType}_{appId}/dist/
 // 附带 previewKey 作为版本号，生成完成后强制加载最新文件
 const previewUrl = computed(() => {
   if (!app.value) return ''
   const dirName = (app.value.codeGenType && appId) ? `${app.value.codeGenType}_${appId}` : ''
   if (!dirName) return ''
-  return `${API_BASE_URL}/static/${dirName}/?t=${previewKey.value}`
+  const base = `${API_BASE_URL}/static/${dirName}/`
+  // Vue 项目类型的生成产物在 dist 子目录下
+  const path = app.value.codeGenType === 'vue_project' ? `${base}dist/index.html` : base
+  return `${path}?t=${previewKey.value}`
 })
 
 // 消息区域滚动到底部
