@@ -21,6 +21,7 @@ import { listAppChatHistory } from '@/api/chatHistoryController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import GlobalHeader from '@/layouts/components/GlobalHeader.vue'
 import logo from '@/assets/logo.png'
+import { useVisualEdit } from '@/composables/useVisualEdit'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,6 +63,7 @@ const detailVisible = ref(false)
 const previewReady = ref(false)
 const previewKey = ref(0)
 const messagesRef = ref<HTMLElement | null>(null)
+const previewIframeRef = ref<HTMLIFrameElement | null>(null)
 let eventSource: EventSource | null = null
 
 // 是否为应用创建者（仅创建者可以对话和部署）
@@ -83,19 +85,27 @@ const formatTime = (time?: string) => {
   return date.toLocaleString('zh-CN', { hour12: false })
 }
 
-// 本地预览地址
-// 格式：http://localhost:8123/api/static/{codeGenType}_{appId}/
-// Vue 项目类型：http://localhost:8123/api/static/{codeGenType}_{appId}/dist/
+// 本地预览地址（通过 Vite 代理访问，与主页面同源，以支持 iframe DOM 访问）
+// 格式：/api/static/{codeGenType}_{appId}/
+// Vue 项目类型：/api/static/{codeGenType}_{appId}/dist/
 // 附带 previewKey 作为版本号，生成完成后强制加载最新文件
 const previewUrl = computed(() => {
   if (!app.value) return ''
   const dirName = (app.value.codeGenType && appId) ? `${app.value.codeGenType}_${appId}` : ''
   if (!dirName) return ''
-  const base = `${API_BASE_URL}/static/${dirName}/`
+  const base = `/api/static/${dirName}/`
   // Vue 项目类型的生成产物在 dist 子目录下
   const path = app.value.codeGenType === 'vue_project' ? `${base}dist/index.html` : base
   return `${path}?t=${previewKey.value}`
 })
+
+// 可视化编辑
+const {
+  editMode: visualEditMode,
+  selectedElements: visualEditElements,
+  enterVisualEdit,
+  exitVisualEdit,
+} = useVisualEdit(previewIframeRef, previewUrl)
 
 // 消息区域滚动到底部
 const scrollToBottom = () => {
@@ -304,7 +314,31 @@ const handleSend = () => {
   console.log('streaming:', streaming.value)
   console.log('loginUser.id:', loginUserStore.loginUser.id)
   console.log('app.userId:', app.value?.userId)
-  sendMessage(input.value)
+
+  let textToSend = input.value
+
+  // 如果处于可视化编辑模式，将选中元素信息附加到消息中
+  if (visualEditMode.value && visualEditElements.value.length > 0) {
+    const elementsDesc = visualEditElements.value
+      .map((el) => {
+        const parts = [`<${el.tagName}>`]
+        if (el.id) parts.push(`id="${el.id}"`)
+        if (el.className) parts.push(`class="${el.className}"`)
+        const text = el.textContent ? `，文本：${el.textContent}` : ''
+        return `${parts.join(' ')}${text}`
+      })
+      .join('\n')
+    textToSend = textToSend
+      ? `${textToSend}\n\n[用户选中的页面元素]：\n${elementsDesc}`
+      : `[用户选中的页面元素]：\n${elementsDesc}`
+  }
+
+  // 退出可视化编辑模式（会清除选中元素）
+  if (visualEditMode.value) {
+    exitVisualEdit()
+  }
+
+  sendMessage(textToSend)
 }
 
 // 工具按钮
@@ -482,6 +516,27 @@ onBeforeUnmount(() => {
           </template>
         </div>
 
+        <!-- 可视化编辑：选中元素提示 -->
+        <div v-if="visualEditMode && visualEditElements.length > 0" class="selected-elements-alert">
+          <a-alert
+            v-for="el in visualEditElements"
+            :key="el._uid"
+            type="info"
+            show-icon
+            closable
+            class="selected-element-alert"
+            @close="() => visualEditElements.splice(visualEditElements.indexOf(el), 1)"
+          >
+            <template #message>
+              <div class="selected-element-info">
+                <div><strong>选中元素：</strong>{{ el.tagName }}{{ el.className ? '.' + el.className.split(/\s+/).join('.') : '' }}</div>
+                <div v-if="el.textContent"><strong>内容：</strong>{{ el.textContent }}</div>
+                <div><strong>选择器：</strong>{{ el.selector }}</div>
+              </div>
+            </template>
+          </a-alert>
+        </div>
+
         <!-- 用户消息输入框 -->
         <div class="input-area">
           <textarea
@@ -495,13 +550,13 @@ onBeforeUnmount(() => {
           <div class="input-actions">
             <div class="input-tools">
               <a-button
+                title="上传文件"
                 size="small"
                 type="text"
                 :disabled="!isOwner || streaming"
                 @click="handleUpload"
               >
                 <template #icon><PaperClipOutlined /></template>
-                上传
               </a-button>
               <a-button
                 size="small"
@@ -555,12 +610,23 @@ onBeforeUnmount(() => {
             <a-button
               v-if="isOwner"
               size="small"
+              :type="visualEditMode ? 'primary' : 'default'"
+              class="preview-action-btn preview-edit-btn"
+              :disabled="streaming"
+              @click="visualEditMode ? exitVisualEdit() : enterVisualEdit()"
+            >
+              <template #icon><EditOutlined /></template>
+              {{ visualEditMode ? '退出编辑' : '编辑模式' }}
+            </a-button>
+            <a-button
+              v-if="isOwner"
+              size="small"
+              title="下载代码"
               class="preview-action-btn preview-download-btn"
               :loading="downloading"
               @click="handleDownload"
             >
               <template #icon><DownloadOutlined /></template>
-              下载代码
             </a-button>
             <a-button
               v-if="isOwner"
@@ -578,6 +644,7 @@ onBeforeUnmount(() => {
         <div class="preview-body">
           <div v-if="previewReady" class="preview-iframe-wrapper">
             <iframe
+              ref="previewIframeRef"
               :key="previewKey"
               :src="previewUrl"
               class="preview-iframe"
@@ -894,6 +961,30 @@ onBeforeUnmount(() => {
   color: #fff;
 }
 
+/* 编辑模式 - 蓝色，与"应用详情"一致 */
+.preview-edit-btn {
+  color: #1677ff;
+  border-color: #1677ff;
+}
+
+.preview-edit-btn:not(:disabled):hover {
+  color: #fff;
+  background: #1677ff;
+  border-color: #1677ff;
+}
+
+.preview-edit-btn.ant-btn-primary {
+  background: #1677ff;
+  border-color: #1677ff;
+  color: #fff;
+}
+
+.preview-edit-btn.ant-btn-primary:not(:disabled):hover {
+  background: #4096ff !important;
+  border-color: #4096ff !important;
+  color: #fff;
+}
+
 .preview-body {
   flex: 1;
   min-height: 0;
@@ -958,6 +1049,29 @@ onBeforeUnmount(() => {
 .detail-prompt {
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 可视化编辑：选中元素提示 */
+.selected-elements-alert {
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.selected-element-alert {
+  margin-bottom: 8px;
+}
+
+.selected-element-info {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.selected-element-info div {
+  margin-bottom: 4px;
+}
+
+.selected-element-info strong {
+  color: #1677ff;
 }
 
 /* 响应式：窄屏时上下布局 */

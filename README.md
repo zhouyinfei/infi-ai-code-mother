@@ -155,8 +155,7 @@ infi-ai-code-mother/
 
 ## 界面预览
 
-### 登录页面
-![登录页面](img/img.png)
+
 
 ### 主页
 ![主页](img/img_1.png)
