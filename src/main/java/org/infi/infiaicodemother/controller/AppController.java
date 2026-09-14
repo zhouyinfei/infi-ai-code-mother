@@ -20,7 +20,6 @@ import org.infi.infiaicodemother.exception.ThrowUtils;
 import org.infi.infiaicodemother.model.dto.app.*;
 import org.infi.infiaicodemother.model.entity.App;
 import org.infi.infiaicodemother.model.entity.User;
-import org.infi.infiaicodemother.model.enums.CodeGenTypeEnum;
 import org.infi.infiaicodemother.model.vo.AppVO;
 import org.infi.infiaicodemother.service.AppService;
 import org.infi.infiaicodemother.service.ProjectDownloadService;
@@ -131,26 +130,14 @@ public class AppController {
      * @return 应用 id
      */
     @PostMapping("/add")
-    public BaseResponse<String> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
+    public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
-        // 参数校验
-        String initPrompt = appAddRequest.getInitPrompt();
-        ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化 prompt 不能为空");
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
-        // 构造入库对象
-        App app = new App();
-        BeanUtil.copyProperties(appAddRequest, app);
-        app.setUserId(loginUser.getId());
-        // 应用名称暂时为 initPrompt 前 12 位
-        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // 暂时设置为多文件生成
-        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
-        // 插入数据库
-        boolean result = appService.save(app);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(String.valueOf(app.getId()));
+        Long appId = appService.createApp(appAddRequest, loginUser);
+        return ResultUtils.success(appId);
     }
+
 
     @Resource
     private ProjectDownloadService projectDownloadService;

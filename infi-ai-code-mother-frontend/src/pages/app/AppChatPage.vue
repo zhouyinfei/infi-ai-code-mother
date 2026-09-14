@@ -448,6 +448,12 @@ onBeforeUnmount(() => {
     <div class="chat-body">
       <!-- 左侧对话区域 -->
       <div class="chat-panel">
+        <div class="chat-header">
+          <span class="chat-title">{{ app?.appName ?? '未命名应用' }}</span>
+          <a-tag v-if="app?.codeGenType" :color="app.codeGenType === 'html' ? 'green' : app.codeGenType === 'vue_project' ? 'purple' : 'blue'" class="chat-gen-tag">
+            {{ app.codeGenType === 'html' ? '原生 HTML 模式' : app.codeGenType === 'vue_project' ? 'Vue 工程模式' : '原生多文件模式' }}
+          </a-tag>
+        </div>
         <div ref="messagesRef" class="messages-area">
           <div v-if="hasMoreHistory" class="load-more-area">
             <a-button size="small" :loading="loadingHistory" @click="loadMoreHistory">
@@ -601,6 +607,12 @@ onBeforeUnmount(() => {
           <a-descriptions-item label="应用名称">
             {{ app?.appName ?? '未命名应用' }}
           </a-descriptions-item>
+          <a-descriptions-item label="生成类型">
+            <a-tag v-if="app?.codeGenType" :color="app.codeGenType === 'html' ? 'green' : app.codeGenType === 'vue_project' ? 'purple' : 'blue'">
+              {{ app.codeGenType === 'html' ? '原生 HTML' : app.codeGenType === 'vue_project' ? 'Vue 工程' : '原生多文件' }}
+            </a-tag>
+            <span v-else>未知</span>
+          </a-descriptions-item>
           <a-descriptions-item label="创建者">
             {{ app?.user?.userName ?? '匿名用户' }}
           </a-descriptions-item>
@@ -656,6 +668,25 @@ onBeforeUnmount(() => {
   flex-direction: column;
   border-right: 1px solid #e8e8e8;
   background: #fff;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.chat-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.chat-gen-tag {
+  font-size: 12px;
 }
 
 .messages-area {

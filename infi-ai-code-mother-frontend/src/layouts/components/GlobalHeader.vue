@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {Layout, Menu, Button, Space, message} from 'ant-design-vue'
 import type { MenuProps } from 'ant-design-vue'
@@ -7,7 +7,7 @@ import logo from '@/assets/logo.ico'
 import type { MenuItem } from '../types'
 import {useLoginUserStore} from "@/stores/loginUser.ts";
 
-import { LogoutOutlined } from '@ant-design/icons-vue'
+import { LogoutOutlined, HomeOutlined } from '@ant-design/icons-vue'
 import {userLogout} from "@/api/userController.ts";
 
 // 用户注销
@@ -94,7 +94,7 @@ const handleLogin = () => {
       theme="light"
       mode="horizontal"
       :selected-keys="selectedKeys"
-      :items="menuItems.map((m) => ({ key: m.key, label: m.label }))"
+      :items="menuItems.map((m) => ({ key: m.key, label: m.label, icon: m.key === 'home' ? h(HomeOutlined) : undefined }))"
       @click="handleMenuClick"
     />
     <div class="header-right">

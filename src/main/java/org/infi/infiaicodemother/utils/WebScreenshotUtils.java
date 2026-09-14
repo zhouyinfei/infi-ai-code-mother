@@ -6,7 +6,6 @@ import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import io.github.bonigarcia.wdm.WebDriverManager;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.infi.infiaicodemother.exception.BusinessException;
 import org.infi.infiaicodemother.exception.ErrorCode;
@@ -24,17 +23,54 @@ import java.time.Duration;
 @Slf4j
 public class WebScreenshotUtils {
 
-    private static final WebDriver webDriver;
+    private static final int DEFAULT_WIDTH = 1600;
+    private static final int DEFAULT_HEIGHT = 900;
 
-    static {
-        final int DEFAULT_WIDTH = 1600;
-        final int DEFAULT_HEIGHT = 900;
-        webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    // 使用 volatile 保证多线程可见性
+    private static volatile WebDriver webDriver;
+    private static final Object lock = new Object();
+
+    /**
+     * 获取 WebDriver 实例，如果不存在或已失效则创建新实例
+     */
+    private static WebDriver getWebDriver() {
+        // 第一次检查：如果实例存在且有效，直接返回
+        if (webDriver != null && isWebDriverHealthy(webDriver)) {
+            return webDriver;
+        }
+        // 加锁进行双重检查，避免并发创建多个实例
+        synchronized (lock) {
+            // 第二次检查：可能在等待锁期间已被其他线程创建
+            if (webDriver != null && isWebDriverHealthy(webDriver)) {
+                return webDriver;
+            }
+            // 关闭旧的失效实例
+            if (webDriver != null) {
+                try {
+                    webDriver.quit();
+                } catch (Exception e) {
+                    log.warn("关闭失效的 WebDriver 失败", e);
+                }
+            }
+            // 创建新实例
+            log.info("创建新的 WebDriver 实例");
+            webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            return webDriver;
+        }
     }
 
-    @PreDestroy
-    public void destroy() {
-        webDriver.quit();
+    /**
+     * 检查 WebDriver 是否健康可用
+     */
+    private static boolean isWebDriverHealthy(WebDriver driver) {
+        try {
+            // 尝试获取当前 URL，如果失败说明 WebDriver 已失效
+            driver.getCurrentUrl();
+            return true;
+        } catch (Exception e) {
+            log.warn("WebDriver 健康检查失败，实例已失效", e);
+            return false;
+        }
     }
 
     /**
@@ -49,6 +85,8 @@ public class WebScreenshotUtils {
             return null;
         }
         try {
+            // 获取健康的 WebDriver 实例（复用或重建）
+            WebDriver driver = getWebDriver();
             // 创建临时目录
             String rootPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "screenshots"
                     + File.separator + UUID.randomUUID().toString().substring(0, 8);
@@ -58,11 +96,11 @@ public class WebScreenshotUtils {
             // 原始截图文件路径
             String imageSavePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + IMAGE_SUFFIX;
             // 访问网页
-            webDriver.get(webUrl);
+            driver.get(webUrl);
             // 等待页面加载完成
-            waitForPageLoad(webDriver);
+            waitForPageLoad(driver);
             // 截图
-            byte[] screenshotBytes = ((TakesScreenshot) webDriver).getScreenshotAs(OutputType.BYTES);
+            byte[] screenshotBytes = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
             // 保存原始图片
             saveImage(screenshotBytes, imageSavePath);
             log.info("原始截图保存成功: {}", imageSavePath);

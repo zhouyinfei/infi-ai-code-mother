@@ -256,8 +256,8 @@ onMounted(() => {
 
         <!-- 生成类型 -->
         <template v-if="column.dataIndex === 'codeGenType'">
-          <a-tag :color="record.codeGenType === 'html' ? 'green' : 'blue'">
-            {{ record.codeGenType === 'html' ? '原生 HTML' : '原生多文件' }}
+          <a-tag :color="record.codeGenType === 'html' ? 'green' : record.codeGenType === 'vue_project' ? 'purple' : 'blue'">
+            {{ record.codeGenType === 'html' ? '原生 HTML' : record.codeGenType === 'vue_project' ? 'Vue 工程' : '原生多文件' }}
           </a-tag>
         </template>
 
