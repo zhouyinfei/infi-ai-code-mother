@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -22,6 +22,7 @@ import { useLoginUserStore } from '@/stores/loginUser'
 import GlobalHeader from '@/layouts/components/GlobalHeader.vue'
 import logo from '@/assets/logo.png'
 import { useVisualEdit } from '@/composables/useVisualEdit'
+import MessageContent from '@/components/MessageContent.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -346,10 +347,6 @@ const handleUpload = () => {
   message.info('演示版本暂未支持上传附件')
 }
 
-const handleEdit = () => {
-  input.value = input.value ? `${input.value}，请支持在线编辑内容` : '请支持在线编辑内容'
-}
-
 const handleOptimize = () => {
   input.value = input.value
     ? `${input.value}，请优化页面的视觉设计和交互体验`
@@ -509,7 +506,7 @@ onBeforeUnmount(() => {
             >
               <img v-if="msg.role === 'assistant'" :src="logo" class="msg-avatar" alt="AI" />
               <div class="msg-bubble">
-                <span class="msg-content">{{ msg.content }}</span>
+                <MessageContent :content="msg.content" />
                 <LoadingOutlined v-if="msg.streaming" class="msg-loading" />
               </div>
             </div>
@@ -557,15 +554,6 @@ onBeforeUnmount(() => {
                 @click="handleUpload"
               >
                 <template #icon><PaperClipOutlined /></template>
-              </a-button>
-              <a-button
-                size="small"
-                type="text"
-                :disabled="!isOwner || streaming"
-                @click="handleEdit"
-              >
-                <template #icon><EditOutlined /></template>
-                编辑
               </a-button>
               <a-button
                 size="small"
@@ -812,10 +800,6 @@ onBeforeUnmount(() => {
   background: #e6f4ff;
   color: #1a1a1a;
   border-top-right-radius: 4px;
-}
-
-.msg-content {
-  white-space: pre-wrap;
 }
 
 .msg-loading {
