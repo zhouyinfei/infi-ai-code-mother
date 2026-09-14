@@ -14,6 +14,7 @@ import {
   GlobalOutlined,
   InfoCircleOutlined,
   DeleteOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons-vue'
 import { getAppVoById, deployApp, deleteApp } from '@/api/appController'
 import { listAppChatHistory } from '@/api/chatHistoryController'
@@ -45,6 +46,7 @@ const input = ref('')
 const streaming = ref(false)
 const loading = ref(false)
 const deploying = ref(false)
+const downloading = ref(false)
 
 // 对话历史
 const historyLoaded = ref(false)
@@ -352,6 +354,38 @@ const openDeployUrl = () => {
   }
 }
 
+// 下载应用代码（ZIP 包）
+const handleDownload = async () => {
+  if (!isOwner.value) {
+    message.warning('仅应用创建者可以下载代码')
+    return
+  }
+  downloading.value = true
+  try {
+    const res = await fetch(`${API_BASE_URL}/app/download/${appId}`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    if (!res.ok) {
+      message.error('下载失败，请稍后重试')
+      return
+    }
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${app.value?.appName ?? 'app'}.zip`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    message.error('下载失败，请检查网络或登录状态')
+  } finally {
+    downloading.value = false
+  }
+}
+
 // 删除应用
 const deleting = ref(false)
 const handleDelete = async () => {
@@ -511,6 +545,16 @@ onBeforeUnmount(() => {
             <a-button size="small" class="preview-action-btn" @click="detailVisible = true">
               <template #icon><InfoCircleOutlined /></template>
               应用详情
+            </a-button>
+            <a-button
+              v-if="isOwner"
+              size="small"
+              class="preview-action-btn preview-download-btn"
+              :loading="downloading"
+              @click="handleDownload"
+            >
+              <template #icon><DownloadOutlined /></template>
+              下载代码
             </a-button>
             <a-button
               v-if="isOwner"
@@ -794,16 +838,28 @@ onBeforeUnmount(() => {
   border-color: #1677ff;
 }
 
-/* 部署 - 橙色渐变 */
+/* 下载代码 - 蓝色 */
+.preview-download-btn {
+  color: #1677ff;
+  border-color: #1677ff;
+}
+
+.preview-download-btn:not(:disabled):hover {
+  color: #fff;
+  background: #1677ff;
+  border-color: #1677ff;
+}
+
+/* 部署 - 蓝色 */
 .preview-deploy-btn {
-  background: linear-gradient(135deg, #fa8c16, #faad14);
-  border-color: #fa8c16;
+  background: #1677ff;
+  border-color: #1677ff;
   color: #fff;
 }
 
 .preview-deploy-btn:not(:disabled):hover {
-  background: linear-gradient(135deg, #d46b08, #d48806) !important;
-  border-color: #d46b08 !important;
+  background: #4096ff !important;
+  border-color: #4096ff !important;
   color: #fff;
 }
 
