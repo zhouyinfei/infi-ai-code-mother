@@ -47,35 +47,42 @@ knife4j:
   setting:
     language: zh_cn
 
-#langchain4j:
-#  open-ai:
-#    chat-model:
-#      base-url: xxxx
-#      api-key: xxxx
-#      # TODO: 请确认模型名称是否正确，参考阿里云百炼控制台的模型列表
-#      # 公共模型示例: qwen-turbo, qwen-plus, qwen-max, qwen2.5-7b-instruct
-#      model-name: qwen3.8-2.4t-a95b
-#      # 超时配置：ISO-8601 Duration 格式，PT120S = 120秒
-#      timeout: PT120S
-#      # 最大重试次数（网络异常时自动重试）
-#      max-retries: 2
-#      log-requests: true
-#      log-responses: true
-#      max-tokens: 8192
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: xxxx
+      api-key: xxxx
+      # TODO: 请确认模型名称是否正确，参考阿里云百炼控制台的模型列表
+      # 公共模型示例: qwen-turbo, qwen-plus, qwen-max, qwen2.5-7b-instruct
+      model-name: qwen3.8-2.4t-a95b
+      # 超时配置：ISO-8601 Duration 格式，PT120S = 120秒
+      timeout: PT120S
+      # 最大重试次数（网络异常时自动重试）
+      max-retries: 2
+      log-requests: true
+      log-responses: true
+      max-tokens: 8192
 #      strict-json-schema: true
 #      response-format: json_object
-#    streaming-chat-model:
-#      base-url: xxx
-#      api-key: xxx
-#      model-name: qwen3.8-2.4t-a95b
-#      max-tokens: 8192
-#      log-requests: true
-#      log-responses: true
+    streaming-chat-model:
+      base-url: xxx
+      api-key: xxx
+      model-name: qwen3.8-2.4t-a95b
+      max-tokens: 8192
+      log-requests: true
+      log-responses: true
 
-#cos:
-#  client:
-#    host: your-custom-domain.com
-#    secretId: your-secret-id
-#    secretKey: your-secret-key
-#    region: ap-shanghai
-#    bucket: your-bucket-name
+cos:
+  client:
+    host: your-custom-domain.com
+    secretId: your-secret-id
+    secretKey: your-secret-key
+    region: ap-shanghai
+    bucket: your-bucket-name
+# Pexels 图片搜索配置
+pexels:
+  api-key: <Your API Key>
+# 阿里云 DashScope 配置
+dashscope:
+  api-key: <Your API Key>
+  image-model: wan2.2-t2i-flash
