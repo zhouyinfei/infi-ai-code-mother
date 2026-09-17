@@ -1,6 +1,7 @@
 package org.infi.infiaicodemother.common;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.infi.infiaicodemother.exception.ErrorCode;
 
 import java.io.Serializable;
@@ -10,6 +11,7 @@ import java.io.Serializable;
  * @param <T>
  */
 @Data
+@NoArgsConstructor
 public class BaseResponse<T> implements Serializable {
     private int code;
     private T data;

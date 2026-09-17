@@ -15,7 +15,7 @@ const router = useRouter()
 const loginUserStore = useLoginUserStore()
 
 // 每页数量（后端限制最多 20 个）
-const PAGE_SIZE = 12
+const PAGE_SIZE = 6
 
 /**
  * 将时间格式化为「x 前」的相对时间
@@ -241,10 +241,8 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- 应用列表区域 -->
-    <section class="content-card">
-      <!-- 我的作品（登录后可见） -->
-      <template v-if="loginUserStore.loginUser.id">
+    <!-- 应用列表区域：我的作品 -->
+    <section v-if="loginUserStore.loginUser.id" class="content-card my-works-card">
         <div class="section-header">
           <h2 class="section-title">我的作品</h2>
           <a-input
@@ -293,9 +291,10 @@ onMounted(() => {
             />
           </div>
         </a-spin>
-      </template>
+    </section>
 
-      <!-- 精选案例 -->
+    <!-- 应用列表区域：精选案例 -->
+    <section class="content-card good-cases-card">
       <div class="section-header">
         <h2 class="section-title">精选案例</h2>
         <a-input
@@ -460,10 +459,20 @@ export default {
   background: #fff;
   border-radius: 24px;
   max-width: 1200px;
-  margin: -40px auto 48px;
+  margin: -40px auto 12px;
   padding: 40px 48px 48px;
   min-height: 400px;
   box-shadow: 0 12px 40px rgba(31, 62, 72, 0.08);
+}
+
+/* 最后一张卡片与页面底部留出间距 */
+.content-card:last-child {
+  margin-bottom: 48px;
+}
+
+/* 两张卡片之间的间距：只有第一张与 hero 区重叠，其余卡片顶部留出间距 */
+.content-card + .content-card {
+  margin-top: 12px;
 }
 
 .section-header {
@@ -476,10 +485,30 @@ export default {
 }
 
 .section-title {
+  position: relative;
+  padding-left: 18px;
   font-size: 28px;
   font-weight: 700;
   color: #1a1a1a;
   margin: 0;
+}
+
+/* 标题左侧色条，强化区块区分 */
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 26px;
+  border-radius: 3px;
+  background: #1677ff;
+}
+
+/* 精选案例标题使用青色色条，与「我的作品」区分 */
+.good-cases-card .section-title::before {
+  background: #13c2c2;
 }
 
 .section-search {

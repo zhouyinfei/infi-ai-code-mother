@@ -8,8 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.infi.infiaicodemother.ai.model.message.*;
 import org.infi.infiaicodemother.ai.tool.BaseTool;
 import org.infi.infiaicodemother.ai.tool.ToolManager;
-import org.infi.infiaicodemother.constant.AppConstant;
-import org.infi.infiaicodemother.core.builder.VueProjectBuilder;
 import org.infi.infiaicodemother.model.entity.User;
 import org.infi.infiaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import org.infi.infiaicodemother.service.ChatHistoryService;
@@ -26,9 +24,6 @@ import java.util.Set;
 @Slf4j
 @Component
 public class JsonMessageStreamHandler {
-
-    @Resource
-    VueProjectBuilder vueProjectBuilder;
 
     @Resource
     private ToolManager toolManager;
@@ -60,9 +55,7 @@ public class JsonMessageStreamHandler {
                     // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                    // 异步构造 Vue 项目
-                    String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
-                    vueProjectBuilder.buildProjectAsync(projectPath);
+
                 })
                 .doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息
