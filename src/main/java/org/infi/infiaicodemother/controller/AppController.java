@@ -21,6 +21,8 @@ import org.infi.infiaicodemother.model.dto.app.*;
 import org.infi.infiaicodemother.model.entity.App;
 import org.infi.infiaicodemother.model.entity.User;
 import org.infi.infiaicodemother.model.vo.AppVO;
+import org.infi.infiaicodemother.ratelimiter.RateLimit;
+import org.infi.infiaicodemother.ratelimiter.enums.RateLimitType;
 import org.infi.infiaicodemother.service.AppService;
 import org.infi.infiaicodemother.service.ProjectDownloadService;
 import org.infi.infiaicodemother.service.UserService;
@@ -60,6 +62,7 @@ public class AppController {
      * @return 生成结果流
      */
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60, message = "AI 对话请求过于频繁，请稍后再试")
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
                                                        @RequestParam String message,
                                                        HttpServletRequest request) {
