@@ -37,7 +37,14 @@ public class FileReadTool  extends BaseTool {
             if (!Files.exists(path) || !Files.isRegularFile(path)) {
                 return "错误：文件不存在或不是文件 - " + relativeFilePath;
             }
-            return Files.readString(path);
+            String content = Files.readString(path);
+            // token 消耗限制：文件超过 30000 字符时截断返回，避免大文件全部进入上下文
+            if (content.length() > 30000) {
+                return "注意：文件较大（" + content.length() + " 字符），已截断前 30000 字符供参考：\n"
+                        + content.substring(0, 30000)
+                        + "\n...（文件已截断，如需修改请基于可见部分做小范围替换，或先确认文件结构）";
+            }
+            return content;
         } catch (IOException e) {
             String errorMessage = "读取文件失败: " + relativeFilePath + ", 错误: " + e.getMessage();
             log.error(errorMessage, e);

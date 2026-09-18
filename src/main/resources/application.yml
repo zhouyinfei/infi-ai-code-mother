@@ -77,7 +77,8 @@ langchain4j:
       base-url: https://api.deepseek.com
       api-key: <Your API Key>
       model-name: deepseek-reasoner
-      max-tokens: 32768
+      # token 消耗限制：单次输出上限 24576，防止复杂网站生成消耗过多 token
+      max-tokens: 24576
       temperature: 0.1
       log-requests: true
       log-responses: true

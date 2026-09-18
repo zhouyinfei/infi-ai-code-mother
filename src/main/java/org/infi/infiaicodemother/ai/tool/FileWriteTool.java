@@ -32,6 +32,11 @@ public class FileWriteTool extends BaseTool {
             @ToolMemoryId Long appId
     ) {
         try {
+            // token 消耗限制：单次写入内容超过 30000 字符时拒绝，避免大段代码全部进入上下文
+            if (content.length() > 30000) {
+                return "错误：单次写入内容超过 30000 字符上限（当前 " + content.length()
+                        + " 字符），请将内容拆分后分多次写入，或精简代码规模";
+            }
             Path path = Paths.get(relativeFilePath);
             if (!path.isAbsolute()) {
                 // 相对路径处理，创建基于 appId 的项目目录
