@@ -29,7 +29,11 @@ const router = useRouter()
 const loginUserStore = useLoginUserStore()
 
 // 后端接口基础地址
-const API_BASE_URL = 'http://localhost:8123/api'
+const API_BASE_URL = '/api'
+
+// 已部署应用的访问地址前缀：本地开发指向 http://localhost（无端口，由本地 80 端口服务提供）；
+// 生产环境用相对路径（同域访问，无端口）；如需部署到独立域名，可设置 VITE_DEPLOY_BASE 覆盖
+const DEPLOY_BASE = import.meta.env.VITE_DEPLOY_BASE ?? (import.meta.env.DEV ? 'http://localhost' : '')
 
 // 应用 id（保持字符串类型，避免雪花ID精度丢失）
 const appId = route.params.id as string
@@ -75,7 +79,7 @@ const isOwner = computed(
 
 // 部署地址：根据 deployKey 推导（与后端部署规则一致），部署成功后刷新应用信息即可更新
 const deployUrl = computed(() =>
-  app.value?.deployKey ? `http://localhost/${app.value.deployKey}/` : '',
+  app.value?.deployKey ? `${DEPLOY_BASE}/${app.value.deployKey}/` : '',
 )
 
 // 格式化时间

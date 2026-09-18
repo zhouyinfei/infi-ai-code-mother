@@ -163,7 +163,11 @@ const handleGoodPageChange = (page: number) => {
   fetchGoodApps()
 }
 
-const STATIC_BASE = 'http://localhost:8123/api/static'
+const STATIC_BASE = '/api/static'
+
+// 已部署应用的访问地址前缀：本地开发指向 http://localhost（无端口，由本地 80 端口服务提供）；
+// 生产环境用相对路径（同域访问，无端口）；如需部署到独立域名，可设置 VITE_DEPLOY_BASE 覆盖
+const DEPLOY_BASE = import.meta.env.VITE_DEPLOY_BASE ?? (import.meta.env.DEV ? 'http://localhost' : '')
 
 // 点击应用卡片，跳转到对话页查看详情 / 效果
 const handleAppClick = (app: API.AppVO) => {
@@ -186,7 +190,7 @@ const handleViewWork = (app: API.AppVO, e: Event) => {
     message.warning('该应用尚未部署')
     return
   }
-  window.open(`http://localhost/${app.deployKey}/`, '_blank')
+  window.open(`${DEPLOY_BASE}/${app.deployKey}/`, '_blank')
 }
 
 onMounted(() => {
