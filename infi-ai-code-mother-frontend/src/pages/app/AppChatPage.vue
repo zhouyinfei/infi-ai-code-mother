@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -31,8 +31,8 @@ const loginUserStore = useLoginUserStore()
 // 后端接口基础地址
 const API_BASE_URL = '/api'
 
-// 已部署应用的访问地址前缀：本地开发指向 http://localhost（无端口，由本地 80 端口服务提供）；
-// 生产环境用相对路径（同域访问，无端口）；如需部署到独立域名，可设置 VITE_DEPLOY_BASE 覆盖
+// 已部署应用的访问地址前缀：本地开发指向 http://localhost（无端口，由本地 nginx 提供）；
+// 生产环境用相对路径（同域访问，无端口）；Nginx 侧已配置 /{deployKey}/ 路由
 const DEPLOY_BASE = import.meta.env.VITE_DEPLOY_BASE ?? (import.meta.env.DEV ? 'http://localhost' : '')
 
 // 应用 id（保持字符串类型，避免雪花ID精度丢失）
@@ -368,8 +368,12 @@ const handleDeploy = async () => {
     const res = await deployApp({ appId })
     if (res.data.code === 0 && res.data.data) {
       message.success('部署成功')
-      // 打开部署后的网站
-      window.open(res.data.data, '_blank')
+      // 部署地址不能用后端返回的（可能是 http://localhost/xxxxx/），只提取 deployKey
+      // 再用前端 DEPLOY_BASE 拼当前环境的无端口访问地址
+      const deployKey = String(res.data.data).split('/').filter(Boolean).pop()
+      if (deployKey) {
+        window.open(`${DEPLOY_BASE}/${deployKey}/`, '_blank')
+      }
       // 刷新应用信息，deployUrl 会根据 deployKey 自动更新
       fetchApp()
     } else {
