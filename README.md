@@ -2,6 +2,46 @@
 
 > 通过自然语言对话，一键生成可部署的 Web 应用。无需编写任何代码，描述你的想法，AI 帮你实现。
 
+![Java](https://img.shields.io/badge/Java-21-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.1-green)
+![Vue](https://img.shields.io/badge/Vue-3.5-42b883)
+![Vite](https://img.shields.io/badge/Vite-8.x-646cff)
+![MySQL](https://img.shields.io/badge/MySQL-8.x-4479a1)
+![Redis](https://img.shields.io/badge/Redis-7.x-dc382d)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+---
+
+## 🚀 在线演示
+
+> 点击下方链接即可在线体验，无需本地部署。
+
+**在线体验地址：** [https://your-demo-domain.com](https://your-demo-domain.com)（部署完成后替换为真实地址）
+
+演示环境说明：
+
+- 支持注册/登录，登录后可完整体验「对话生成 → 实时预览 → 可视化编辑 → 一键部署 → 下载代码」全流程
+- 演示环境已配置 AI 模型与对象存储，可直接生成并部署应用
+- 为保障服务稳定，演示环境对 AI 对话接口做了限流，高峰期可能需要稍等
+
+---
+
+## 目录
+
+- [功能特性](#功能特性)
+- [界面预览](#界面预览)
+- [技术栈](#技术栈)
+- [快速开始](#快速开始)
+- [生产部署](#生产部署)
+- [项目结构](#项目结构)
+- [核心流程](#核心流程)
+- [API 文档](#api-文档)
+- [设计模式](#设计模式)
+- [常见问题](#常见问题-faq)
+- [License](#license)
+
+---
+
 ## 功能特性
 
 - **对话式生成**：输入自然语言描述，AI 自动生成完整的网页应用
@@ -18,6 +58,24 @@
 - **封面自动截图**：部署后通过 Selenium 自动截取应用页面作为封面图
 - **精选案例**：首页展示优质应用案例，激发创作灵感
 - **用户管理**：支持注册登录，管理员可管理用户、应用和对话历史
+
+## 界面预览
+
+### 主页
+![主页](img/img_1.png)
+
+![精选案例](img/img_5.png)
+
+### 对话生成网页
+![对话生成](img/img_4.png)
+
+![代码预览](img/img_3.png)
+
+### 应用管理（管理员）
+![应用管理](img/img_2.png)
+
+### 用户管理（管理员）
+![用户管理](img/img_6.png)
 
 ## 技术栈
 
@@ -106,6 +164,8 @@ cos:
     bucket: your-bucket-name
 ```
 
+> 💡 首次使用可参考 `src/main/resources/application.yml` 中的完整配置结构（含推理模型、智能路由模型、Pexels 图片搜索、DashScope 等可选项）。
+
 确保 `application.yml` 中的数据库连接信息正确（默认 `localhost:3306/infi_ai_code_mother`，账号 `root`）、Redis 连接正确（默认 `localhost:6379`）。
 
 ### 4. 启动后端
@@ -131,6 +191,67 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## 生产部署
+
+### 后端打包
+
+```bash
+./mvnw clean package -DskipTests
+```
+
+生成可执行 JAR：`target/infi-ai-code-mother-*.jar`，直接运行：
+
+```bash
+java -jar target/infi-ai-code-mother-*.jar --spring.profiles.active=prod
+```
+
+> 生产环境建议新建 `application-prod.yml`（同样不入库），配置线上数据库、Redis、AI 模型与 COS 参数。
+
+### 前端构建
+
+```bash
+cd infi-ai-code-mother-frontend
+npm install
+npm run build
+```
+
+产物输出到 `infi-ai-code-mother-frontend/dist/`。
+
+### Nginx 反向代理（前后端同域部署示例）
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    # 前端静态资源
+    root /var/www/infi-ai-code-mother/dist;
+    index index.html;
+
+    # 前端路由（history 模式）
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 后端 API 反向代理
+    location /api/ {
+        proxy_pass http://127.0.0.1:8123;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # SSE 流式对话必需
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+}
+```
+
+部署完成后，访问 `https://your-domain.com` 即可使用完整功能。建议同时配置 HTTPS（如 certbot 免费证书）。
 
 ## 项目结构
 
@@ -176,8 +297,17 @@ infi-ai-code-mother/
 
 ## 核心流程
 
-```
-用户输入描述 → AI 智能路由生成类型 → 创建应用 → 进入对话页面 → AI 流式生成代码 → 实时预览 → 迭代优化 → 一键部署（COS）→ 自动截图生成封面
+```mermaid
+flowchart LR
+    A[用户输入描述] --> B[AI 智能路由<br/>生成类型]
+    B --> C[创建应用]
+    C --> D[进入对话页面]
+    D --> E[AI 流式生成代码<br/>SSE]
+    E --> F[实时预览]
+    F --> G{是否满意?}
+    G -->|不满意| D
+    G -->|满意| H[一键部署<br/>腾讯云 COS]
+    H --> I[自动截图生成封面]
 ```
 
 1. 用户在首页输入自然语言描述（如"做一个现代风格的电商首页"），AI 自动推荐生成模式（HTML / 多文件 / Vue 工程）
@@ -214,21 +344,7 @@ infi-ai-code-mother/
 | `/api/static/{deployKey}/**` | GET | 访问已部署应用的静态资源 |
 | `/api/health/` | GET | 健康检查 |
 
-## 界面预览
-
-### 主页
-![主页](img/img_1.png)
-![精选案例](img/img_5.png)
-
-### 对话生成网页
-![对话生成](img/img_4.png)
-![代码预览](img/img_3.png)
-
-### 应用管理(管理员)
-![img.png](img/img_2.png)
-
-### 用户管理(管理员)
-![img_1.png](img/img_6.png)
+> 注：管理端接口（`admin`）与对话生成、部署等接口需要登录鉴权。
 
 ## 设计模式
 
@@ -238,6 +354,20 @@ infi-ai-code-mother/
 - **模板方法模式**：`CodeFileSaverTemplate` 抽象基类定义保存流程，子类实现具体保存逻辑
 - **门面模式**：`AiCodeGeneratorFacade` 统一编排 AI 生成、代码解析、文件保存
 - **工厂模式**：`AiCodeGeneratorServiceFactory` 管理 AI 服务实例的创建，`CodeParserExecutor` / `CodeFileSaverExecutor` 按类型路由解析与保存实现
+
+## 常见问题 (FAQ)
+
+**Q: 对话时 AI 不回复或报错？**
+检查 `application-local.yml` 中 AI 模型的 `base-url` / `api-key` / `model-name` 是否正确，并确认网络可访问该接口；流式接口建议 `timeout` 配置为 `PT120S` 以上。
+
+**Q: 部署后页面能打开但接口 404？**
+确认 Nginx 中 `/api/` 的 `proxy_pass` 是否指向了后端端口（默认 `8123`），且后端已启动。SSE 对话异常时检查是否配置了 `proxy_buffering off`。
+
+**Q: 一键部署应用后访问链接打不开？**
+检查 COS 的 `bucket` 是否已开启公有读（或配置 CDN），并确认 `host` 域名与 bucket 对应区域一致。
+
+**Q: 忘记管理员账号？**
+注册用户后，直接在数据库 `user` 表中将目标用户 `user_role` 修改为 `admin`（1）即可。
 
 ## License
 

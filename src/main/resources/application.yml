@@ -86,6 +86,7 @@ langchain4j:
       base-url: https://api.deepseek.com
       api-key: <Your API Key>
       model-name: deepseek-chat
+      max-tokens: 100
       log-requests: true
       log-responses: true
 
